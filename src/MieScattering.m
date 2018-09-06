@@ -132,7 +132,7 @@ classdef MieScattering
                         error('Error: x,y,z must have the same length or be scalars');
                     end
                     [phi,theta,observation] = cart2sph(x,y,z);
-                    theta = theta+pi/2;
+                    theta = theta-pi/2;
                     if isscalar(theta) == 1
                         theta = theta*ones(len,1);
                     end
