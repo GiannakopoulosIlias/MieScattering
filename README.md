@@ -6,5 +6,11 @@ implemented in this package can be found easily in the relevant literature. Our 
 a complete Mie Scattering package to help fellow scientists to validate their work. We note that
 the software is not free from bugs and it is not by any means optimal in programming sense, thus
 we are open to any suggestions and comments for improvment. Finally, please cite our github
-repository in case you use the software for your work.
+repository in case you use the software for your work, using the following bibtex entry.
 
+@misc{MieScattering,
+  author="{Giannakopoulos, Ilias}",
+  title={Matlab software for the {M}ie Scattering of {PEC} and Homogeneous Spheres Irradiated by a Linearly Polarized Plane Wave},
+  url = {https://www.github.com/GiannakopoulosIlias/MieScattering},
+  year={2018}
+}
