@@ -10,19 +10,19 @@ classdef MieScattering
        
        methods
                 function obj = MieScattering(inp_N,inp_radius,inp_Eo,inp_ko,inp_ns)
-                    if (isscalar(inp_N)==0)
+                    if (~isscalar(inp_N))
                         error('Error: inp_N must be a scalar');
                     end
-                    if (isscalar(inp_radius)==0)
+                    if (~isscalar(inp_radius))
                         error('Error: inp_radius must be a scalar');
                     end
-                    if (isscalar(inp_Eo)==0)
+                    if (~isscalar(inp_Eo))
                         error('Error: inp_Eo must be a scalar');
                     end
-                    if (isscalar(inp_ko)==0)
+                    if (~isscalar(inp_ko))
                         error('Error: inp_ko must be a scalar');
                     end
-                    if (isscalar(inp_ns)==0)
+                    if (~isscalar(inp_ns))
                         error('Error: inp_ns must be a scalar');
                     end
                     obj.value_N = inp_N;
@@ -33,7 +33,7 @@ classdef MieScattering
                 end
                 
                 function[sbi] = BistaticRCS(obj,phi,theta)
-                    if (isscalar(phi)==0)
+                    if (isscalar(phi))
                         error('Error: phi must be a scalar');
                     end
                     N = obj.value_N;
@@ -89,7 +89,7 @@ classdef MieScattering
                 end 
               
                 function[EincTotal, HincTotal] = Incident_Fields(obj,phi,theta,observation)
-                    if (isscalar(phi)==0 || isscalar(observation)==0)
+                    if (~isscalar(phi) || ~isscalar(observation))
                         error('Error: phi and observation point must be scalars');
                     end
                     N = obj.value_N;
@@ -121,11 +121,11 @@ classdef MieScattering
                 end
               
                 function[EscaTotal, HscaTotal] = Interior_Fields_Line(obj,x,y,z)
-                    if isscalar(x) == 0
+                    if ~isscalar(x)
                         len = length(x);
-                    elseif isscalar(y) == 0 
+                    elseif ~isscalar(y)
                         len = length(y);
-                    elseif isscalar(z) == 0
+                    elseif ~isscalar(z)
                         len = length(z);
                     end
                     if ~((len/length(x) == 1 || len/length(x) == len) && (len/length(y) == 1 || len/length(y) == len) && (len/length(z) == 1 || len/length(z) == len))
@@ -133,13 +133,13 @@ classdef MieScattering
                     end
                     [phi,theta,observation] = cart2sph(x,y,z);
                     theta = theta-pi/2;
-                    if isscalar(theta) == 1
+                    if ~isscalar(theta)
                         theta = theta*ones(len,1);
                     end
-                    if isscalar(phi) == 1 
+                    if ~isscalar(phi) 
                         phi = phi*ones(len,1);
                     end
-                    if isscalar(observation) == 1 
+                    if ~isscalar(observation)
                         observation = observation*ones(len,1);
                     end
                     N = obj.value_N;
@@ -191,9 +191,129 @@ classdef MieScattering
                     HscaTotal(:,2) = Eo*ns/Zo*Hy;
                     HscaTotal(:,3) = Eo*ns/Zo*Hz;
                 end
+                
+                function[ETotal, HTotal] = Cartesian_Fields_volume(obj,x,y,z)
+                    len_x = length(x);
+                    len_y = length(y);
+                    len_z = length(z);
+                    [X,Y,Z] = meshgrid(x,y,z);
+                    [phi,theta,observation] = cart2sph(X,Y,Z);
+                    theta = theta-pi/2;
+                    N = obj.value_N;
+                    radius = obj.value_radius;
+                    Eo = obj.value_Eo;
+                    ko = obj.value_ko;
+                    ns = obj.value_ns;
+                    c = 299792458;
+                    mu = 4*pi*10^(-7);
+                    epsilon = 1/c^2/mu;
+                    r = observation*ko;
+                    z = radius*ko;
+                    Zo = sqrt(mu/epsilon);
+                    Ex = zeros(len_x,len_y,len_z,1);
+                    Ey = zeros(len_x,len_y,len_z,1);
+                    Ez = zeros(len_x,len_y,len_z,1);
+                    Hx = zeros(len_x,len_y,len_z,1);
+                    Hy = zeros(len_x,len_y,len_z,1);
+                    Hz = zeros(len_x,len_y,len_z,1);
+                    parfor i=1:len_x
+                        i
+                        for j = 1:len_y
+                            for k = 1:len_z
+                                if r(i,j,k) < z
+                                    Etottheta = 0;
+                                    Etotphi   = 0;
+                                    Etotrho   = 0;
+                                    Htottheta = 0;
+                                    Htotphi   = 0;
+                                    Htotrho   = 0;
+                                    for n=1:N
+                                        [C, D]    = MieScattering.Parameters_Dielectric_Interior(n,z,ns);
+                                        [me, mo]  = MieScattering.Spherical_Wave_function_m(1,ns*r(i,j,k),theta(i,j,k),phi(i,j,k),1,n);
+                                        [ne, no]  = MieScattering.Spherical_Wave_function_n(1,ns*r(i,j,k),theta(i,j,k),phi(i,j,k),1,n);
+                                        Etottheta = Etottheta + (-1i)^n*(2*n+1)/(n*(n+1))*(C*mo(1,:) + 1i*D*ne(1,:));
+                                        Htottheta = Htottheta + (-1i)^n*(2*n+1)/(n*(n+1))*(D*me(1,:) - 1i*C*no(1,:));
+                                        Etotphi   = Etotphi + (-1i)^n*(2*n+1)/(n*(n+1))*(C*mo(2,:) + 1i*D*ne(2,:));
+                                        Htotphi   = Htotphi + (-1i)^n*(2*n+1)/(n*(n+1))*(D*me(2,:) - 1i*C*no(2,:));
+                                        Etotrho   = Etotrho + (-1i)^n*(2*n+1)/(n*(n+1))*(C*mo(3,:) + 1i*D*ne(3,:));
+                                        Htotrho   = Htotrho + (-1i)^n*(2*n+1)/(n*(n+1))*(D*me(3,:) - 1i*C*no(3,:));
+                                    end
+                                    Ex(i,j,k) = sin(theta(i,j,k))*cos(phi(i,j,k))*Etotrho + cos(theta(i,j,k))*cos(phi(i,j,k))*Etottheta - sin(phi(i,j,k))*Etotphi;
+                                    Ey(i,j,k) = sin(theta(i,j,k))*sin(phi(i,j,k))*Etotrho + cos(theta(i,j,k))*sin(phi(i,j,k))*Etottheta + cos(phi(i,j,k))*Etotphi;
+                                    Ez(i,j,k) = cos(theta(i,j,k))*Etotrho - sin(theta(i,j,k))*Etottheta;
+                                    Hx(i,j,k) = sin(theta(i,j,k))*cos(phi(i,j,k))*Htotrho + cos(theta(i,j,k))*cos(phi(i,j,k))*Htottheta - sin(phi(i,j,k))*Htotphi;
+                                    Hy(i,j,k) = sin(theta(i,j,k))*sin(phi(i,j,k))*Htotrho + cos(theta(i,j,k))*sin(phi(i,j,k))*Htottheta + cos(phi(i,j,k))*Htotphi;
+                                    Hz(i,j,k) = cos(theta(i,j,k))*Htotrho - sin(theta(i,j,k))*Htottheta;
+                                    Ex(i,j,k) = -Eo*Ex(i,j,k);
+                                    Ey(i,j,k) = -Eo*Ey(i,j,k);
+                                    Ez(i,j,k) = -Eo*Ez(i,j,k);
+                                    Hx(i,j,k) = Eo*ns/Zo*Hx(i,j,k);
+                                    Hy(i,j,k) = Eo*ns/Zo*Hy(i,j,k);
+                                    Hz(i,j,k) = Eo*ns/Zo*Hz(i,j,k);
+                                else
+                                    Escatheta = 0;
+                                    Escaphi   = 0;
+                                    Escarho   = 0;
+                                    Hscatheta = 0;
+                                    Hscaphi   = 0;
+                                    Hscarho   = 0;
+                                    Einctheta = 0;
+                                    Eincphi   = 0;
+                                    Eincrho   = 0;
+                                    Hinctheta = 0;
+                                    Hincphi   = 0;
+                                    Hincrho   = 0;
+                                    for n=1:N
+                                        [A, B]    = MieScattering.Parameters_Dielectric_Scattered(n,z,ns);
+                                        [me, mo]  = MieScattering.Spherical_Wave_function_m(4,r(i,j,k),theta(i,j,k),phi(i,j,k),1,n);
+                                        [ne, no]  = MieScattering.Spherical_Wave_function_n(4,r(i,j,k),theta(i,j,k),phi(i,j,k),1,n);
+                                        Escatheta = Escatheta + (-1i)^n*(2*n+1)/(n*(n+1))*(A*mo(1,:) + 1i*B*ne(1,:));
+                                        Hscatheta = Hscatheta + (-1i)^n*(2*n+1)/(n*(n+1))*(B*me(1,:) - 1i*A*no(1,:));
+                                        Escaphi   = Escaphi + (-1i)^n*(2*n+1)/(n*(n+1))*(A*mo(2,:) + 1i*B*ne(2,:));
+                                        Hscaphi   = Hscaphi + (-1i)^n*(2*n+1)/(n*(n+1))*(B*me(2,:) - 1i*A*no(2,:));
+                                        Escarho   = Escarho + (-1i)^n*(2*n+1)/(n*(n+1))*(A*mo(3,:) + 1i*B*ne(3,:));
+                                        Hscarho   = Hscarho + (-1i)^n*(2*n+1)/(n*(n+1))*(B*me(3,:) - 1i*A*no(3,:));
+                                        [me, mo]  = MieScattering.Spherical_Wave_function_m(1,r(i,j,k),theta(i,j,k),phi(i,j,k),1,n);
+                                        [ne, no]  = MieScattering.Spherical_Wave_function_n(1,r(i,j,k),theta(i,j,k),phi(i,j,k),1,n);
+                                        Einctheta = Einctheta + (-1i)^n*(2*n+1)/(n*(n+1))*(mo(1,:) + 1i*ne(1,:));
+                                        Hinctheta = Hinctheta + (-1i)^n*(2*n+1)/(n*(n+1))*(me(1,:) - 1i*no(1,:));
+                                        Eincphi   = Eincphi + (-1i)^n*(2*n+1)/(n*(n+1))*(mo(2,:) + 1i*ne(2,:));
+                                        Hincphi   = Hincphi + (-1i)^n*(2*n+1)/(n*(n+1))*(me(2,:) - 1i*no(2,:));
+                                        Eincrho   = Eincrho + (-1i)^n*(2*n+1)/(n*(n+1))*(mo(3,:) + 1i*ne(3,:));
+                                        Hincrho   = Hincrho + (-1i)^n*(2*n+1)/(n*(n+1))*(me(3,:) - 1i*no(3,:));
+                                    end
+                                    Etottheta = Escatheta + Einctheta;
+                                    Etotphi   = Escaphi   + Eincphi;
+                                    Etotrho   = Escarho   + Eincrho;
+                                    Htottheta = Hscatheta + Hinctheta;
+                                    Htotphi   = Hscaphi   + Hincphi;
+                                    Htotrho   = Hscarho   + Hincrho;
+                                    Ex(i,j,k) = sin(theta(i,j,k))*cos(phi(i,j,k))*Etotrho + cos(theta(i,j,k))*cos(phi(i,j,k))*Etottheta - sin(phi(i,j,k))*Etotphi;
+                                    Ey(i,j,k) = sin(theta(i,j,k))*sin(phi(i,j,k))*Etotrho + cos(theta(i,j,k))*sin(phi(i,j,k))*Etottheta + cos(phi(i,j,k))*Etotphi;
+                                    Ez(i,j,k) = cos(theta(i,j,k))*Etotrho - sin(theta(i,j,k))*Etottheta;
+                                    Hx(i,j,k) = sin(theta(i,j,k))*cos(phi(i,j,k))*Htotrho + cos(theta(i,j,k))*cos(phi(i,j,k))*Htottheta - sin(phi(i,j,k))*Htotphi;
+                                    Hy(i,j,k) = sin(theta(i,j,k))*sin(phi(i,j,k))*Htotrho + cos(theta(i,j,k))*sin(phi(i,j,k))*Htottheta + cos(phi(i,j,k))*Htotphi;
+                                    Hz(i,j,k) = cos(theta(i,j,k))*Htotrho - sin(theta(i,j,k))*Htottheta;
+                                    Ex(i,j,k) = -Eo*Ex(i,j,k);
+                                    Ey(i,j,k) = -Eo*Ey(i,j,k);
+                                    Ez(i,j,k) = -Eo*Ez(i,j,k);
+                                    Hx(i,j,k) = Eo/Zo*Hx(i,j,k);
+                                    Hy(i,j,k) = Eo/Zo*Hy(i,j,k);
+                                    Hz(i,j,k) = Eo/Zo*Hz(i,j,k);
+                                end
+                            end
+                        end
+                    end
+                    ETotal(:,:,:,1) = Ex;
+                    ETotal(:,:,:,2) = Ey;
+                    ETotal(:,:,:,3) = Ez;
+                    HTotal(:,:,:,1) = Hx;
+                    HTotal(:,:,:,2) = Hy;
+                    HTotal(:,:,:,3) = Hz;
+                end
               
                 function[EscaTotal,HscaTotal] = Scattered_Fields(obj,phi,theta,observation)
-                    if (isscalar(phi)==0 || isscalar(observation)==0)
+                    if (~isscalar(phi) || ~isscalar(observation))
                         error('Error: phi and observation point must be scalars');
                     end
                     N = obj.value_N;
@@ -232,7 +352,7 @@ classdef MieScattering
                     HscaTotal = Eo/Zo*[Hscarho; Hscatheta; Hscaphi];
                 end
               
-                function[Q_scat,Q_ext] = Power_Efficiency(obj)
+                function[Q_scat,Q_ext,Q_abs] = Power_Efficiency(obj)
                     N = obj.value_N;
                     radius = obj.value_radius;
                     Eo = obj.value_Eo;
@@ -251,6 +371,7 @@ classdef MieScattering
                     Q_ext = C_ext./G/Eo;
                     C_scat = 2*pi/ko^2*C_scat;
                     Q_scat = C_scat./G/Eo;
+                    Q_abs = Q_ext + Q_scat;
                 end
        end
        
@@ -272,11 +393,11 @@ classdef MieScattering
                         Sb1k = sqrt(pi./(2*z)).*besselj(n+1/2,z);
                     end
                 end
-                function[Sb2k] = Spherical_Bessel_function_2k(n,Z)
-                    Sb2k = sqrt(pi./(2*Z)).*bessely(n+1/2,Z);
+                function[Sb2k] = Spherical_Bessel_function_2k(n,z)
+                    Sb2k = sqrt(pi./(2*z)).*bessely(n+1/2,z);
                 end
-                function[Shnk] = Spherical_Hankel_function(n,Z,k)
-                    Shnk = sqrt(pi./(2*Z)).*besselh(n+1/2,k,Z);
+                function[Shnk] = Spherical_Hankel_function(n,z,k)
+                    Shnk = sqrt(pi./(2*z)).*besselh(n+1/2,k,z);
                 end
                 function[dSb] = Differentation_Spherical_Bessel_function(n,Z,k)
                     if k==1
