@@ -217,7 +217,6 @@ classdef MieScattering
                     Hy = zeros(len_x,len_y,len_z,1);
                     Hz = zeros(len_x,len_y,len_z,1);
                     parfor i=1:len_x
-                        i
                         for j = 1:len_y
                             for k = 1:len_z
                                 if r(i,j,k) < z
