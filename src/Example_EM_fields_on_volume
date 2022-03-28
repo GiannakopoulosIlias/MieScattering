@@ -47,12 +47,10 @@ imagesc([X1 X2 X3])
 colormap hot;
 colorbar
 axis image;
-impixelinfo;
 title('$|e_{\rm tot}|$','Interpreter','latex');
 subplot(2,1,2)
 imagesc([Y1 Y2 Y3])
 colormap hot;
 colorbar
 axis image;
-impixelinfo;
 title('$|h_{\rm tot}|$','Interpreter','latex');
