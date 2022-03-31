@@ -3,8 +3,6 @@ clearvars
 clc
 
 %% Set
-ep_r = 10;
-s_e  = 0.2;
 R    = 0.5;
 n1   = 100;
 n2   = 100;
