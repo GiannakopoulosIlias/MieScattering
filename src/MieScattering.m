@@ -33,7 +33,7 @@ classdef MieScattering
                 end
                 
                 function[sbi] = BistaticRCS(obj,phi,theta)
-                    if (isscalar(phi))
+                    if (~isscalar(phi))
                         error('Error: phi must be a scalar');
                     end
                     N = obj.value_N;
